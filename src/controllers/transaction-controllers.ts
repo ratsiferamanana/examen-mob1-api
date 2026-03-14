@@ -62,7 +62,8 @@ export class TransactionController {
       const { page, pageSize } = req as any;
       const { accountId } = req.params as Record<string, string>;
       TransactionValidator.filters(req.query as any);
-      const data = await TransactionServices.getAll(accountId, { page, pageSize, ...req.query });
+      // Important: ensure numeric page/pageSize override any string query params
+      const data = await TransactionServices.getAll(accountId, { ...req.query, page, pageSize });
       res.json(data.map(TransactionMapper.toRest));
     } catch (error) {
       res.json({ code: error.status, message: error.message });

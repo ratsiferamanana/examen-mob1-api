@@ -1,4 +1,4 @@
-import { email, z } from "zod";
+import { z } from "zod";
 
 import { ApiError } from "@/errors";
 
@@ -13,8 +13,13 @@ const signIn = z.object({
   email: z.string().min(4),
 });
 
+const googleSignIn = z.object({
+  idToken: z.string().min(10),
+});
+
 type SignUp = z.infer<typeof signUp>;
 type SignIn = z.infer<typeof signIn>;
+type GoogleSignIn = z.infer<typeof googleSignIn>;
 
 export class AccountValidator {
   public static signUp(account: SignUp) {
@@ -23,6 +28,11 @@ export class AccountValidator {
   }
   public static signIn(account: SignIn) {
     const result = signIn.safeParse(account);
+    if (!result.success) throw new ApiError(z.prettifyError(result.error), 400);
+  }
+
+  public static googleSignIn(payload: GoogleSignIn) {
+    const result = googleSignIn.safeParse(payload);
     if (!result.success) throw new ApiError(z.prettifyError(result.error), 400);
   }
 }

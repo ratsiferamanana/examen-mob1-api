@@ -26,4 +26,15 @@ export class AccountController {
       next(err);
     }
   };
+
+  static readonly signInWithGoogle: RequestHandler = async (req, res, next) => {
+    try {
+      const { idToken } = req.body;
+      AccountValidator.googleSignIn({ idToken });
+      const data = await AccountServices.signInWithGoogle(idToken);
+      res.json(data);
+    } catch (err) {
+      next(err);
+    }
+  };
 }
