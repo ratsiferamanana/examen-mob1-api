@@ -8,7 +8,10 @@
     "format": "prettier --write \"./**/*.{ts,json}\" --config \".prettierrc.json\"",
     "migrate:dev": "prisma migrate dev",
     "migrate:prod": "prisma migrate prod",
+    "migrate:deploy": "prisma migrate deploy",
     "gen:client": "./generate-client.sh",
+    "postinstall": "prisma generate",
+    "start": "ts-node src/index.ts",
     "studio": "prisma studio"
   },
   "keywords": [],
