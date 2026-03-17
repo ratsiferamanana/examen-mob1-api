@@ -50,11 +50,17 @@ export class WalletMapper {
     return mapped as PrismaWallet;
   }
 
-  public static update(accountId: string, wallet: RestWallet): PrismaWallet {
-    const mapped = copyObject(wallet);
-    delete mapped.amount;
-    mapped.accountId = accountId;
-    return mapped as PrismaWallet;
+  public static update(accountId: string, wallet: RestWallet): any {
+    // On exclut tous les champs qui ne peuvent pas être dans le data de Prisma update
+    // accountId, id, walletAutomaticIncome ne sont pas des champs directs
+    return {
+      name: wallet.name,
+      description: wallet.description,
+      type: wallet.type,
+      color: wallet.color,
+      iconRef: wallet.iconRef,
+      isActive: wallet.isActive,
+    };
   }
 
   public static toListResponse(wallets: PrismaWallet[], prismaPaginationInfo: PrismaPaginationInfo) {

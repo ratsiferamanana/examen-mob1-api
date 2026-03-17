@@ -35,7 +35,7 @@ export class ProjectServices {
     const existingProject = await this.getOneById(accountId, projectId);
 
     return await getPrismaClient().project.update({
-      where: { id: projectId, accountId },
+      where: { id: projectId },
       data: {
         name: project.name || existingProject.name,
         description: project.description !== undefined ? project.description : existingProject.description,
@@ -47,17 +47,17 @@ export class ProjectServices {
   }
 
   static async archiveOneById(accountId: string, projectId: string): Promise<PrismaProject> {
-    const project = await this.getOneById(accountId, projectId);
+    await this.getOneById(accountId, projectId);
     return await getPrismaClient().project.update({
-      where: { id: projectId, accountId },
+      where: { id: projectId },
       data: { isArchived: true },
     });
   }
 
   static async deleteOneById(accountId: string, projectId: string): Promise<PrismaProject> {
-    const project = await this.getOneById(accountId, projectId);
+    await this.getOneById(accountId, projectId);
     return await getPrismaClient().project.delete({
-      where: { id: projectId, accountId },
+      where: { id: projectId },
     });
   }
 
@@ -80,7 +80,7 @@ export class ProjectServices {
 
   // ProjectTransaction CRUD
   static async createTransaction(accountId: string, projectId: string, transaction: CreationProjectTransaction, walletId?: string): Promise<PrismaProjectTransaction> {
-    const project = await this.getOneById(accountId, projectId);
+    await this.getOneById(accountId, projectId);
 
     // Si un walletId est fourni et qu'il y a un coût réel, déduire du wallet
     if (walletId && transaction.realCost && transaction.realCost > 0) {
@@ -88,7 +88,7 @@ export class ProjectServices {
       wallet.amount -= transaction.realCost;
       await getPrismaClient().wallet.update({
         data: { amount: wallet.amount },
-        where: { id: walletId, accountId },
+        where: { id: walletId },
       });
     }
 
@@ -113,7 +113,13 @@ export class ProjectServices {
     return transaction;
   }
 
-  static async updateTransaction(accountId: string, projectId: string, transactionId: string, transaction: Partial<CreationProjectTransaction>, walletId?: string): Promise<PrismaProjectTransaction> {
+  static async updateTransaction(
+    accountId: string,
+    projectId: string,
+    transactionId: string,
+    transaction: Partial<CreationProjectTransaction>,
+    walletId?: string,
+  ): Promise<PrismaProjectTransaction> {
     const existingTransaction = await this.getTransactionById(accountId, projectId, transactionId);
 
     // Si le coût réel a changé et qu'un wallet est associé, ajuster le wallet
@@ -126,10 +132,10 @@ export class ProjectServices {
 
     if (targetWalletId && costDifference !== 0) {
       const wallet = await WalletServices.getOneById(accountId, targetWalletId);
-      wallet.amount -= costDifference; // Soustraire la différence
+      wallet.amount -= costDifference;
       await getPrismaClient().wallet.update({
         data: { amount: wallet.amount },
-        where: { id: targetWalletId, accountId },
+        where: { id: targetWalletId },
       });
     }
 
@@ -147,14 +153,14 @@ export class ProjectServices {
 
   static async deleteTransaction(accountId: string, projectId: string, transactionId: string): Promise<PrismaProjectTransaction> {
     const transaction = await this.getTransactionById(accountId, projectId, transactionId);
-    
+
     // Si une transaction avec un coût réel est liée à un wallet, rembourser le wallet
     if (transaction.walletId && transaction.realCost && transaction.realCost > 0) {
       const wallet = await WalletServices.getOneById(accountId, transaction.walletId);
-      wallet.amount += transaction.realCost; // Rembourser le montant
+      wallet.amount += transaction.realCost;
       await getPrismaClient().wallet.update({
         data: { amount: wallet.amount },
-        where: { id: transaction.walletId, accountId },
+        where: { id: transaction.walletId },
       });
     }
 
@@ -164,7 +170,7 @@ export class ProjectServices {
   }
 
   static async getTransactionsByProject(accountId: string, projectId: string) {
-    const project = await this.getOneById(accountId, projectId);
+    await this.getOneById(accountId, projectId);
 
     return await getPrismaClient().projectTransaction.findMany({
       where: {

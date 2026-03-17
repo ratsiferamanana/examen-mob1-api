@@ -12,10 +12,10 @@ export class SubscriptionServices {
     return await getPrismaClient().subscription.create({ data: { accountId, token: v4(), endingDate } });
   }
 
-  public static async addSubscriptionToAccount(account: string, token: string) {
+  public static async addSubscriptionToAccount(accountId: string, token: string) {
     const subscription = await getPrismaClient().subscription.findFirst({ where: { token } });
     if (!subscription) throw new BadRequestError("Token=" + token + " does not exist.");
-    const configuration: any = await ConfigurationServices.getOne(account);
+    const configuration: any = await ConfigurationServices.getOne(accountId);
     delete configuration.subscriptionId;
     return await getPrismaClient().configuration.update({
       data: { ...configuration, subscription: { connect: subscription } },

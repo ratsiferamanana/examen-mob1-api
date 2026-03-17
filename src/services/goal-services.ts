@@ -13,6 +13,7 @@ export class GoalServices {
     if (getGoalByName) throw new ApiError(`Goal with name=${goal.name} already exist`, 400);
     return await getPrismaClient().goal.create({ data: goal });
   }
+
   static async update(accountId: string, walletId: string, goal: RestGoal) {
     const getGoalById = await getPrismaClient().goal.findFirst({ where: { id: goal.id, accountId, walletId, isArchived: false } });
     if (!getGoalById || getGoalById.isArchived) throw new ApiError(`Goal with id=${goal.id} not found`, 404);
@@ -20,7 +21,10 @@ export class GoalServices {
     const getGoalByName = await getPrismaClient().goal.findFirst({ where: { name: goal.name, accountId, walletId, id: { not: goal.id }, isArchived: false } });
     if (getGoalByName) throw new ApiError(`Goal with name=${goal.name} already exist`, 400);
 
-    return await getPrismaClient().goal.update({ data: GoalMapper.update(accountId, goal), where: { id: goal.id, accountId, walletId } });
+    return await getPrismaClient().goal.update({
+      data: GoalMapper.update(accountId, goal),
+      where: { id: goal.id },
+    });
   }
 
   static async getOneById(accountId: string, id: string) {
@@ -28,12 +32,17 @@ export class GoalServices {
     if (!getGoalById || getGoalById.isArchived) throw new ApiError(`Goal with id=${id} not found`, 404);
     return getGoalById;
   }
+
   static async archiveOneById(accountId: string, id: string) {
     const getGoalById = await getPrismaClient().goal.findFirst({ where: { id, accountId } });
     if (!getGoalById) throw new ApiError(`Goal with id=${id} not found`, 404);
     getGoalById.isArchived = true;
-    return await getPrismaClient().goal.update({ data: getGoalById, where: { id, accountId } });
+    return await getPrismaClient().goal.update({
+      data: getGoalById,
+      where: { id },
+    });
   }
+
   static async getAll(accountId: string, query: GoalFilters) {
     const { page, pageSize, name = "", walletId, startingDateBeginning, endingDateBeginning, endingDateEnding, startingDateEnding, sort, sortBy, maxAmount, minAmount } = query;
 

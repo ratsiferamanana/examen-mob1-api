@@ -15,30 +15,45 @@ export class TransactionServices {
 
     if (new Date(transaction.date).getTime() <= new Date().getTime()) {
       const currentWallet = await WalletServices.getOneById(accountId, walletId);
+      // IN = revenu → on ajoute, OUT = dépense → on soustrait
       currentWallet.amount += transaction.amount * (transaction.type === "IN" ? 1 : -1);
-      await getPrismaClient().wallet.update({ data: currentWallet, where: { accountId, id: walletId } });
+      await getPrismaClient().wallet.update({
+        data: { amount: currentWallet.amount },
+        where: { id: walletId },
+      });
     }
 
-    return (await getPrismaClient().transaction.create({ data: { ...transaction, labels: { connect: mappedLabelsIds } }, include: { labels: true } })) as PrismaTransaction;
+    return (await getPrismaClient().transaction.create({
+      data: { ...transaction, labels: { connect: mappedLabelsIds } },
+      include: { labels: true },
+    })) as PrismaTransaction;
   }
 
   static async update(accountId: string, walletId: string, transactionId: string, transaction: PrismaTransaction, labels: Label[]) {
     const getTransactionById = await getPrismaClient().transaction.findFirst({ where: { id: transactionId, accountId, walletId } });
     if (!getTransactionById) throw new ApiError(`Transaction with id=${transactionId} not found`, 404);
 
-    if (new Date(transaction.date).getTime() <= new Date().getTime() && transaction.amount && transaction.amount !== getTransactionById.amount) {
-      const diff = getTransactionById.amount - transaction.amount;
+    // Recalcul correct du solde wallet lors d'une modification
+    if (new Date(transaction.date).getTime() <= new Date().getTime()) {
       const currentWallet = await WalletServices.getOneById(accountId, walletId);
-      if (transaction.type === "IN") currentWallet.amount += diff;
-      else currentWallet.amount -= diff;
-      await getPrismaClient().wallet.update({ data: currentWallet, where: { accountId, id: walletId } });
+
+      // 1. On annule l'effet de l'ancienne transaction
+      currentWallet.amount -= getTransactionById.amount * (getTransactionById.type === "IN" ? 1 : -1);
+
+      // 2. On applique l'effet de la nouvelle transaction
+      currentWallet.amount += transaction.amount * (transaction.type === "IN" ? 1 : -1);
+
+      await getPrismaClient().wallet.update({
+        data: { amount: currentWallet.amount },
+        where: { id: walletId },
+      });
     }
 
     const mappedLabelsIds = await LabelValidator.list(accountId, labels);
 
     return await getPrismaClient().transaction.update({
       data: { ...transaction, labels: { set: mappedLabelsIds } },
-      where: { id: transactionId, accountId, walletId },
+      where: { id: transactionId },
       include: { labels: true },
     });
   }
@@ -52,12 +67,16 @@ export class TransactionServices {
   static async deleteOneById(accountId: string, walletId: string, transactionId: string) {
     const getTransactionById = await getPrismaClient().transaction.findFirst({ where: { id: transactionId, walletId, accountId }, include: { labels: true } });
     if (!getTransactionById) throw new ApiError(`Transaction with id=${transactionId} not found`, 404);
-    // update wallet
+
+    // On annule l'effet de la transaction supprimée sur le wallet
     const wallet = await WalletServices.getOneById(accountId, walletId);
-    wallet.amount = wallet.amount + getTransactionById.amount * (getTransactionById.type === "IN" ? 1 : -1);
-    await getPrismaClient().wallet.update({ data: wallet, where: { id: wallet.id, accountId: wallet.accountId } });
-    // update wallet
-    await getPrismaClient().transaction.delete({ where: { id: transactionId, walletId, accountId } });
+    wallet.amount -= getTransactionById.amount * (getTransactionById.type === "IN" ? 1 : -1);
+    await getPrismaClient().wallet.update({
+      data: { amount: wallet.amount },
+      where: { id: wallet.id },
+    });
+
+    await getPrismaClient().transaction.delete({ where: { id: transactionId } });
     return getTransactionById;
   }
 
